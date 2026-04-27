@@ -169,9 +169,3 @@ API_TOKEN=other-token ./parley .
 - **WebSocket / SSE support** — stream responses in the viewer pane
 - **gRPC support** — proto-based collections alongside HTTP ones
 - **Response diffing** — compare two runs of the same request side by side
-
----
-
-## License
-
-MIT
