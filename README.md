@@ -1,5 +1,7 @@
 # parley
 
+![Jack Sparrow GIF](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDE5dnM5cTdnZG15d2V5dmlqcTdmeHQ0Zzlxd2xkbWR4czN5M3p1MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/10X22vzgNamaiI/giphy.gif)
+
 > A git-friendly TUI HTTP client. Collections are plain TOML files — diff them, commit them, review them.
 
 ---
@@ -169,9 +171,3 @@ API_TOKEN=other-token ./parley .
 - **WebSocket / SSE support** — stream responses in the viewer pane
 - **gRPC support** — proto-based collections alongside HTTP ones
 - **Response diffing** — compare two runs of the same request side by side
-
----
-
-## License
-
-MIT
