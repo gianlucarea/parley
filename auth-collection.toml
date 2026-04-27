@@ -1,0 +1,39 @@
+[[requests]]
+name   = "Bearer Auth"
+method = "GET"
+url    = "https://httpbin.org/bearer"
+
+[requests.auth]
+type  = "bearer"
+token = "{{API_TOKEN}}"
+
+[[requests]]
+name   = "Basic Auth"
+method = "GET"
+url    = "https://httpbin.org/basic-auth/{{USER}}/{{PASS}}"
+
+[requests.auth]
+type     = "basic"
+username = "{{USER}}"
+password = "{{PASS}}"
+
+[[requests]]
+name   = "Echo Headers"
+method = "GET"
+url    = "https://httpbin.org/headers"
+
+[requests.headers]
+X-Custom-Header = "parley-test"
+
+[[requests]]
+name   = "Post with Bearer"
+method = "POST"
+url    = "https://httpbin.org/post"
+body   = '{"hello":"world"}'
+
+[requests.headers]
+Content-Type = "application/json"
+
+[requests.auth]
+type  = "bearer"
+token = "{{API_TOKEN}}"

@@ -1,0 +1,29 @@
+[[requests]]
+name   = "List Posts"
+method = "GET"
+url    = "https://jsonplaceholder.typicode.com/posts"
+
+[requests.headers]
+Accept = "application/json"
+
+[[requests]]
+name   = "Get Post"
+method = "GET"
+url    = "https://jsonplaceholder.typicode.com/posts/1"
+
+[requests.headers]
+Accept = "application/json"
+
+[[requests]]
+name   = "Create Post"
+method = "POST"
+url    = "https://jsonplaceholder.typicode.com/posts"
+body   = '{"title":"parley","body":"git-friendly TUI HTTP client","userId":1}'
+
+[requests.headers]
+Content-Type = "application/json"
+
+[[requests]]
+name   = "Delete Post"
+method = "DELETE"
+url    = "https://jsonplaceholder.typicode.com/posts/1"

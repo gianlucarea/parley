@@ -1,0 +1,12 @@
+# Binaries
+parley
+*.exe
+
+# Env secrets
+.parley.env
+
+# Build output
+dist/
+
+# macOS
+.DS_Store
