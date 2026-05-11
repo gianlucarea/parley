@@ -15,6 +15,7 @@ type Request struct {
 	Headers map[string]string `toml:"headers"`
 	Body    string            `toml:"body"`
 	Auth    Auth              `toml:"auth"`
+	Expect  Expect            `toml:"expect"`
 }
 
 // Auth holds authentication configuration for a request.
@@ -24,4 +25,11 @@ type Auth struct {
 	Token    string `toml:"token"`    // bearer
 	Username string `toml:"username"` // basic
 	Password string `toml:"password"` // basic
+}
+
+// Expect defines optional response assertions for a request.
+// A zero-value Expect (Status == 0, BodyContains == nil) means no assertions.
+type Expect struct {
+	Status       int      `toml:"status"`
+	BodyContains []string `toml:"body_contains"`
 }

@@ -158,6 +158,133 @@ func TestExecute_UnsupportedMethod(t *testing.T) {
 	}
 }
 
+func TestExecute_Assertions_NoExpect(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	req := collection.Request{Method: "GET", URL: srv.URL}
+	resp, err := Execute(req, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Assertions) != 0 {
+		t.Errorf("expected no assertions, got %d", len(resp.Assertions))
+	}
+}
+
+func TestExecute_Assertions_StatusPass(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+
+	req := collection.Request{
+		Method: "GET",
+		URL:    srv.URL,
+		Expect: collection.Expect{Status: 200},
+	}
+	resp, err := Execute(req, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Assertions) != 1 {
+		t.Fatalf("expected 1 assertion, got %d", len(resp.Assertions))
+	}
+	a := resp.Assertions[0]
+	if !a.Pass {
+		t.Errorf("expected assertion to pass")
+	}
+	if a.Got != "200" || a.Want != "200" {
+		t.Errorf("unexpected Got/Want: %q / %q", a.Got, a.Want)
+	}
+}
+
+func TestExecute_Assertions_StatusFail(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+	}))
+	defer srv.Close()
+
+	req := collection.Request{
+		Method: "GET",
+		URL:    srv.URL,
+		Expect: collection.Expect{Status: 200},
+	}
+	resp, err := Execute(req, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Assertions) != 1 {
+		t.Fatalf("expected 1 assertion, got %d", len(resp.Assertions))
+	}
+	a := resp.Assertions[0]
+	if a.Pass {
+		t.Errorf("expected assertion to fail")
+	}
+	if a.Got != "201" || a.Want != "200" {
+		t.Errorf("unexpected Got/Want: %q / %q", a.Got, a.Want)
+	}
+}
+
+func TestExecute_Assertions_BodyContainsPass(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte(`{"ok":true,"userId":1}`))
+	}))
+	defer srv.Close()
+
+	req := collection.Request{
+		Method: "GET",
+		URL:    srv.URL,
+		Expect: collection.Expect{BodyContains: []string{"ok", "userId"}},
+	}
+	resp, err := Execute(req, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Assertions) != 2 {
+		t.Fatalf("expected 2 assertions, got %d", len(resp.Assertions))
+	}
+	for _, a := range resp.Assertions {
+		if !a.Pass {
+			t.Errorf("expected assertion %q to pass", a.Name)
+		}
+	}
+}
+
+func TestExecute_Assertions_BodyContainsFail(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	req := collection.Request{
+		Method: "GET",
+		URL:    srv.URL,
+		Expect: collection.Expect{BodyContains: []string{"ok", "missing"}},
+	}
+	resp, err := Execute(req, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Assertions) != 2 {
+		t.Fatalf("expected 2 assertions, got %d", len(resp.Assertions))
+	}
+	if !resp.Assertions[0].Pass {
+		t.Errorf("expected first assertion to pass")
+	}
+	if resp.Assertions[1].Pass {
+		t.Errorf("expected second assertion to fail")
+	}
+	if resp.Assertions[1].Got != "not found" {
+		t.Errorf("expected Got to be 'not found', got %q", resp.Assertions[1].Got)
+	}
+}
+
 func TestExecute_UnsupportedAuthType(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)

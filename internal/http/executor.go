@@ -12,6 +12,14 @@ import (
 	"github.com/gianlucarea/parley/internal/env"
 )
 
+// AssertionResult holds the outcome of a single response assertion.
+type AssertionResult struct {
+	Name string
+	Pass bool
+	Got  string
+	Want string
+}
+
 // Response holds the result of an executed HTTP request.
 type Response struct {
 	StatusCode int
@@ -19,6 +27,7 @@ type Response struct {
 	Headers    map[string]string
 	Body       string
 	Elapsed    time.Duration
+	Assertions []AssertionResult
 }
 
 // Execute performs the HTTP request described by req, substituting any
@@ -87,13 +96,42 @@ func Execute(req collection.Request, vars map[string]string) (Response, error) {
 		headers[k] = strings.Join(vals, ", ")
 	}
 
-	return Response{
+	result := Response{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Headers:    headers,
 		Body:       string(rawBody),
 		Elapsed:    elapsed,
-	}, nil
+	}
+	runAssertions(req, &result)
+	return result, nil
+}
+
+// runAssertions evaluates any expect declarations on req against the response.
+func runAssertions(req collection.Request, resp *Response) {
+	if req.Expect.Status != 0 {
+		pass := resp.StatusCode == req.Expect.Status
+		resp.Assertions = append(resp.Assertions, AssertionResult{
+			Name: fmt.Sprintf("status == %d", req.Expect.Status),
+			Pass: pass,
+			Got:  fmt.Sprintf("%d", resp.StatusCode),
+			Want: fmt.Sprintf("%d", req.Expect.Status),
+		})
+	}
+	for _, s := range req.Expect.BodyContains {
+		pass := strings.Contains(resp.Body, s)
+		ar := AssertionResult{
+			Name: fmt.Sprintf("body contains %q", s),
+			Pass: pass,
+			Want: "present",
+		}
+		if pass {
+			ar.Got = "present"
+		} else {
+			ar.Got = "not found"
+		}
+		resp.Assertions = append(resp.Assertions, ar)
+	}
 }
 
 // applyAuth sets the Authorization header based on the auth configuration.

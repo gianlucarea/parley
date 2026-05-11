@@ -40,7 +40,7 @@ func (v *Viewer) SetResponse(resp httpexec.Response) {
 	v.resp = &resp
 	v.err = nil
 	v.loading = false
-	v.viewport.SetContent(highlightBody(resp.Body))
+	v.viewport.SetContent(buildViewerContent(resp))
 	v.viewport.GotoTop()
 }
 
@@ -63,6 +63,9 @@ var (
 	statusErrStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F45B5B"))
 	statusInfoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
 	dividerStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+	assertPassStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
+	assertFailStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F45B5B"))
+	assertHdrStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#CCCCCC"))
 )
 
 func (v Viewer) View() string {
@@ -91,6 +94,47 @@ func (v Viewer) View() string {
 		divider,
 		v.viewport.View(),
 	)
+}
+
+// buildViewerContent composes the viewport content: syntax-highlighted body
+// followed by an assertions section (if any assertions were defined).
+func buildViewerContent(resp httpexec.Response) string {
+	body := highlightBody(resp.Body)
+	if len(resp.Assertions) == 0 {
+		return body
+	}
+
+	var sb strings.Builder
+	sb.WriteString(body)
+	sb.WriteString("\n\n")
+	sb.WriteString(dividerStyle.Render(strings.Repeat("─", 40)))
+	sb.WriteString("\n")
+	sb.WriteString(assertHdrStyle.Render("Assertions"))
+	sb.WriteString("\n\n")
+
+	passed := 0
+	for _, a := range resp.Assertions {
+		if a.Pass {
+			passed++
+			sb.WriteString(assertPassStyle.Render("✓  " + a.Name))
+		} else {
+			sb.WriteString(assertFailStyle.Render("✗  " + a.Name))
+			sb.WriteString("\n")
+			sb.WriteString(statusInfoStyle.Render("   got: " + a.Got + "  want: " + a.Want))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("\n")
+	total := len(resp.Assertions)
+	failed := total - passed
+	if failed == 0 {
+		sb.WriteString(assertPassStyle.Render(fmt.Sprintf("All %d passed", total)))
+	} else {
+		sb.WriteString(assertFailStyle.Render(fmt.Sprintf("%d/%d failed", failed, total)))
+	}
+
+	return sb.String()
 }
 
 // highlightBody applies syntax highlighting to JSON/HTML/XML bodies.
