@@ -8,6 +8,8 @@
 
 ## What is this?
 
+🛠️ **Project Origin**: This project originally began as a highly successful AI-assisted engineering experiment designed to build a lightweight, specialized tool for personal development workflows.
+
 Most HTTP clients store your requests in a proprietary binary format or a JSON blob that's painful to review in a pull request. Parley stores everything as plain TOML: one file per collection, readable by humans, diffable by Git.
 
 ![Demo GIF](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExbGh4cnFnMzd0cTJ5YmZyNmx0MDV1M3RucWl2OWFpYXpxbW1vMHduaCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/nG19UJLcVRowjSG7E4/giphy.gif
