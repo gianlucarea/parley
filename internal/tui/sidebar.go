@@ -251,3 +251,6 @@ func (s *Sidebar) skipSectionItems(dir int) {
 		s.list.Select(idx)
 	}
 }
+
+// Filtering reports whether the filter input is currently capturing keys.
+func (s Sidebar) Filtering() bool { return s.filtering }

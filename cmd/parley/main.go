@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +12,18 @@ import (
 )
 
 func main() {
+	var envName string
+	flag.StringVar(&envName, "env", "", "named environment to use (loads .parley.<name>.env over .parley.env)")
+	flag.StringVar(&envName, "e", "", "shorthand for --env")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "usage: parley [--env name] [dir]\n\n")
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
 	dir := "."
-	if len(os.Args) > 1 {
-		dir = os.Args[1]
+	if flag.NArg() > 0 {
+		dir = flag.Arg(0)
 	}
 
 	collections, err := collection.ParseDir(dir)
@@ -23,18 +32,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Load .parley.env from the collection directory if present; missing file is not an error.
-	envPath := filepath.Join(dir, ".parley.env")
-	envVars, err := env.Load(envPath)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		fmt.Fprintln(os.Stderr, "error loading .parley.env:", err)
+	// Load .parley.env and any .parley.<name>.env files; missing files are not an error.
+	envs, err := env.Discover(".")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error loading environment:", err)
 		os.Exit(1)
 	}
-	if envVars == nil {
-		envVars = make(map[string]string)
+	if _, err := envs.Resolve(envName); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
 	}
 
-	if err := tui.Run(collections, envVars); err != nil {
+	if err := tui.Run(collections, envs, envName); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
