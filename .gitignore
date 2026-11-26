@@ -1,9 +1,11 @@
-# Binaries
-parley
+# Binaries (anchored so cmd/parley/ is not ignored)
+/parley
+/parlay
 *.exe
 
 # Env secrets
 .parley.env
+.parley.*.env
 
 # Build output
 dist/
