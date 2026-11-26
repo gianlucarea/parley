@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gianlucarea/parley/internal/collection"
 	"github.com/gianlucarea/parley/internal/env"
