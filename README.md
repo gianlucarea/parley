@@ -147,6 +147,8 @@ password = "{{PASS}}"
 
 ## `.parley.env` reference
 
+parley looks for `.parley.env` in the collection directory you pass on the command line (e.g. `parley ./api` reads `./api/.parley.env`).
+
 ```dotenv
 # Lines starting with # are comments
 BASE_URL=https://api.example.com

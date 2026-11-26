@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gianlucarea/parley/internal/collection"
 	"github.com/gianlucarea/parley/internal/env"
@@ -22,8 +23,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Load .parley.env if present; missing file is not an error.
-	envPath := ".parley.env"
+	// Load .parley.env from the collection directory if present; missing file is not an error.
+	envPath := filepath.Join(dir, ".parley.env")
 	envVars, err := env.Load(envPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		fmt.Fprintln(os.Stderr, "error loading .parley.env:", err)
