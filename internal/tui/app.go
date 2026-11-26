@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -33,22 +31,46 @@ type App struct {
 	viewer   Viewer
 	focus    pane
 	vars     map[string]string
+	envs     env.Set
+	envOrder []string // "" (base only) first, then named envs
+	envIdx   int
 	width    int
 	height   int
 	showHelp bool
+	status   string // transient message shown in the bottom bar
 }
 
-// New creates and returns an initialised App.
-func New(collections []collection.Collection, vars map[string]string) App {
+// New creates and returns an initialised App using the given environment set,
+// starting on envName ("" means base .parley.env only).
+func New(collections []collection.Collection, envs env.Set, envName string) App {
 	// sensible defaults before window size arrives
 	sw, ew, vw, h := 28, 40, 60, 24
-	return App{
-		sidebar: NewSidebar(collections, sw, h),
-		editor:  NewEditor(ew, h),
-		viewer:  NewViewer(vw, h),
-		focus:   paneSidebar,
-		vars:    vars,
+	order := append([]string{""}, envs.Names...)
+	idx := 0
+	for i, n := range order {
+		if n == envName {
+			idx = i
+		}
 	}
+	a := App{
+		sidebar:  NewSidebar(collections, sw, h),
+		editor:   NewEditor(ew, h),
+		viewer:   NewViewer(vw, h),
+		focus:    paneSidebar,
+		envs:     envs,
+		envOrder: order,
+		envIdx:   idx,
+	}
+	a.vars, _ = envs.Resolve(order[idx])
+	return a
+}
+
+// currentEnv returns the display name of the active environment.
+func (a App) currentEnv() string {
+	if n := a.envOrder[a.envIdx]; n != "" {
+		return n
+	}
+	return "default"
 }
 
 func (a App) Init() tea.Cmd { return nil }
@@ -67,7 +89,19 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.viewer.SetSize(vw, msg.Height-1)
 
 	case tea.KeyMsg:
+		if a.focus == paneSidebar && a.sidebar.Filtering() && msg.String() != "ctrl+c" {
+			break // let the filter input receive every key
+		}
+		a.status = ""
 		switch msg.String() {
+		case "e":
+			if len(a.envOrder) > 1 {
+				a.envIdx = (a.envIdx + 1) % len(a.envOrder)
+				a.vars, _ = a.envs.Resolve(a.envOrder[a.envIdx])
+			} else {
+				a.status = "no named envs: add .parley.<name>.env in the launch directory"
+			}
+			return a, nil
 		case "ctrl+c", "q":
 			return a, tea.Quit
 		case "?":
@@ -126,6 +160,7 @@ var (
 	activePane   = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#7D56F4"))
 	inactivePane = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#333333"))
 	helpStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	envStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4")).Bold(true)
 )
 
 func (a App) View() string {
@@ -141,7 +176,11 @@ func (a App) View() string {
 	viewerView := paneBox(a.viewer.View(), vw, h, a.focus == paneViewer)
 
 	main := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, editorView, viewerView)
-	hint := helpStyle.Render("Tab: switch pane  Enter: select/run  ?: help  q: quit")
+	hintText := "Tab: switch pane  Enter: select/run  e: switch env  ?: help  q: quit"
+	if a.status != "" {
+		hintText = a.status
+	}
+	hint := envStyle.Render("env: "+a.currentEnv()) + "  " + helpStyle.Render(hintText)
 	return lipgloss.JoinVertical(lipgloss.Left, main, hint)
 }
 
@@ -162,6 +201,7 @@ func helpOverlay() string {
   ↑ / ↓        Navigate sidebar
   / (slash)    Filter requests in sidebar
   Esc          Clear filter
+  e            Cycle environment (.parley.<name>.env)
   ?            Toggle this help
   q / Ctrl+C   Quit
 `
@@ -183,14 +223,9 @@ func splitWidths(total int) (sidebar, editor, viewer int) {
 	return
 }
 
-// Run starts the Bubbletea program for the given collections and env vars.
-func Run(collections []collection.Collection, envVars map[string]string) error {
-	if envVars == nil {
-		envVars = make(map[string]string)
-	}
-	_ = env.Substitute // keep import used
-	_ = fmt.Sprintf    // keep import used
-	p := tea.NewProgram(New(collections, envVars), tea.WithAltScreen())
+// Run starts the Bubbletea program for the given collections and environments.
+func Run(collections []collection.Collection, envs env.Set, envName string) error {
+	p := tea.NewProgram(New(collections, envs, envName), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }
