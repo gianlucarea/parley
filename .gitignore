@@ -1,9 +1,10 @@
 # Binaries
-parley
+/parley
 *.exe
 
 # Env secrets
 .parley.env
+.parley.*.env
 
 # Build output
 dist/

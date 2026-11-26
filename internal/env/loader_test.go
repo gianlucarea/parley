@@ -3,6 +3,7 @@ package env
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -156,5 +157,94 @@ func TestSubstitute_EmptyString(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("got %q", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Discover / Resolve
+// ---------------------------------------------------------------------------
+
+func writeFile(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", name, err)
+	}
+}
+
+func TestDiscover_BaseAndNamed(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".parley.env", "BASE_URL=https://base\nTOKEN=shared\n")
+	writeFile(t, dir, ".parley.staging.env", "BASE_URL=https://staging\n")
+	writeFile(t, dir, ".parley.dev.env", "BASE_URL=http://localhost\n")
+	writeFile(t, dir, ".parley.env.example", "IGNORED=1\n")
+
+	set, err := Discover(dir)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if got := strings.Join(set.Names, ","); got != "dev,staging" {
+		t.Errorf("Names = %q, want dev,staging", got)
+	}
+	if set.Base["TOKEN"] != "shared" {
+		t.Errorf("Base TOKEN = %q", set.Base["TOKEN"])
+	}
+}
+
+func TestDiscover_MissingBase(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".parley.prod.env", "BASE_URL=https://prod\n")
+	set, err := Discover(dir)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(set.Base) != 0 || len(set.Names) != 1 {
+		t.Errorf("unexpected set: %+v", set)
+	}
+}
+
+func TestDiscover_EmptyDir(t *testing.T) {
+	set, err := Discover(t.TempDir())
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if set.Base == nil || len(set.Names) != 0 {
+		t.Errorf("unexpected set: %+v", set)
+	}
+}
+
+func TestDiscover_ParseErrorNamesFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".parley.bad.env", "NOEQUALS\n")
+	_, err := Discover(dir)
+	if err == nil || !strings.Contains(err.Error(), ".parley.bad.env") {
+		t.Fatalf("expected error mentioning file, got %v", err)
+	}
+}
+
+func TestResolve(t *testing.T) {
+	set := Set{
+		Base:  map[string]string{"BASE_URL": "https://base", "TOKEN": "shared"},
+		Named: map[string]map[string]string{"dev": {"BASE_URL": "http://localhost"}},
+		Names: []string{"dev"},
+	}
+
+	base, err := set.Resolve("")
+	if err != nil || base["BASE_URL"] != "https://base" {
+		t.Fatalf("Resolve(\"\") = %v, %v", base, err)
+	}
+
+	dev, err := set.Resolve("dev")
+	if err != nil {
+		t.Fatalf("Resolve(dev): %v", err)
+	}
+	if dev["BASE_URL"] != "http://localhost" || dev["TOKEN"] != "shared" {
+		t.Errorf("dev = %v", dev)
+	}
+	if set.Base["BASE_URL"] != "https://base" {
+		t.Error("Resolve mutated Base")
+	}
+
+	if _, err := set.Resolve("nope"); err == nil || !strings.Contains(err.Error(), "dev") {
+		t.Errorf("expected unknown-env error listing dev, got %v", err)
 	}
 }

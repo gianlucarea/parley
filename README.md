@@ -28,7 +28,8 @@ Most HTTP clients store your requests in a proprietary binary format or a JSON b
 
 - Parses a `.parley.env` file (key=value, optional quotes, `#` comments)
 - Replaces `{{VAR}}` placeholders in URLs, headers, bodies, and auth fields
-- Substitution precedence: **shell environment > `.parley.env` > literal value**
+- Multiple named environments via `.parley.<name>.env` files, selected with `--env` or switched live with `e`
+- Substitution precedence: **shell environment > `.parley.<name>.env` > `.parley.env`**
 
 ### HTTP executor (`internal/http`)
 
@@ -59,6 +60,7 @@ Keyboard shortcuts:
 | `Enter` | Select request (sidebar) / Run request (editor) |
 | `/` | Filter requests |
 | `Esc` | Clear filter |
+| `e` | Cycle environment (`default` → named envs) |
 | `?` | Toggle help overlay |
 | `q` / `Ctrl+C` | Quit |
 
@@ -163,9 +165,29 @@ API_TOKEN=other-token ./parley .
 
 ---
 
+## Named environments
+
+Put shared values in `.parley.env` and per-environment overrides in `.parley.<name>.env` (all in the directory you launch parley from):
+
+```
+.parley.env          # shared defaults (e.g. API_TOKEN)
+.parley.dev.env      # BASE_URL=http://localhost:8080
+.parley.staging.env  # BASE_URL=https://staging.example.com
+.parley.prod.env     # BASE_URL=https://api.example.com
+```
+
+Pick one at startup, or press `e` in the TUI to cycle through them. The active environment is shown in the bottom bar.
+
+```sh
+./parley --env staging .   # or: ./parley -e staging .
+```
+
+Precedence: **shell environment > `.parley.<name>.env` > `.parley.env`**. Without `--env`, only `.parley.env` is used (`default`). An unknown name exits with the list of available environments. `.parley.*.env` files are gitignored.
+
+---
+
 ## Possible future developments
 
-- **Multiple named environments** — switch between `dev`, `staging`, and `prod` profiles without editing files
 - **Request history** — persist and browse previous responses per request
 - **Export to curl** — copy the selected request as a ready-to-paste `curl` command
 - **Import from OpenAPI / Swagger** — generate a collection from an API spec file or URL
